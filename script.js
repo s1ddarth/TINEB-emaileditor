@@ -119,13 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
           // --- Platform Specific Adjustments (Example for iOS if needed later) ---
           let finalQueryString = params.toString();
-          // if ('${platform}' === 'ios') { // Check the platform variable passed to generateHtmlContent
+          if ('${platform}' === 'ios') { // Check the platform variable passed to generateHtmlContent
               // iOS Mail sometimes prefers %0A over %0D%0A or even %20 for spaces in body
               // If the standard URLSearchParams encoding causes issues on iOS,
               // you might need to manually replace encodings here.
               // Example (use with caution, test thoroughly):
-              // finalQueryString = finalQueryString.replace(/%0D%0A/g, '%0A').replace(/%20/g, '+');
-          // }
+              finalQueryString = finalQueryString.replace(/\\+/g, '%20');
+          }
 
           if (TO_ADDRESS) {
              // Encode TO addresses individually, then join
