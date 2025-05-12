@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Test: Email Petition</title>
+    <title>Save Nicobar: Email petition</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <style>
@@ -48,10 +48,10 @@
       const TO_ADDRESS = "test@gmail.com";
       const CC_ADDRESS = "";
       const BCC_ADDRESS = "solidarity@thereisnoearthb.com";
-      const SUBJECT_LINES = ["WOUNDONWDOUNDWOINDoundwondqodwinq","zounfeoinezfonefpnefwpinewfpnfeiwnfw"];
-      const PARA1_OPTIONS = ["ewnpgiwnegewpngewpfngqepfnewuofnqwofnqpwnf","ingwpgoenw[ewognewpfnpwefinwepfinewfpnefpon"];
-      const PARA2_OPTIONS = ["gewepgfnewgpinewgpwiengewpgnegpwnewgpn","genwrgnqwpofnqwrwuruuttutuurru"];
-      const PARA3_OPTIONS = ["eniwipgwpiegnwepgnwegpewignewpgn","ewngewpignwpgnweipfnwqojfqwouwqfnwqoufqpwifnpwqinfwqfpnfwipnfwqfnqwwfonwqfpo"];
+      const SUBJECT_LINES = ["Hello World","Hello World 2"];
+      const PARA1_OPTIONS = ["Intro 1","Intro 2"];
+      const PARA2_OPTIONS = ["Para2 1","Para2 2"];
+      const PARA3_OPTIONS = ["Resolution 1","Resolution 2"];
       const SIGNING_OFF_OPTIONS = ["Yours Sincerely,","In Solidarity,","With hope for justice,","Regards,"];
 
       // --- Use actual newline characters internally for JS logic ---
@@ -109,13 +109,13 @@
 
           // --- Platform Specific Adjustments (Example for iOS if needed later) ---
           let finalQueryString = params.toString();
-          // if ('android' === 'ios') { // Check the platform variable passed to generateHtmlContent
+          if ('android' === 'ios') { // Check the platform variable passed to generateHtmlContent
               // iOS Mail sometimes prefers %0A over %0D%0A or even %20 for spaces in body
               // If the standard URLSearchParams encoding causes issues on iOS,
               // you might need to manually replace encodings here.
               // Example (use with caution, test thoroughly):
-              // finalQueryString = finalQueryString.replace(/%0D%0A/g, '%0A').replace(/%20/g, '+');
-          // }
+              finalQueryString = finalQueryString.replace(/\+/g, '%20');
+          }
 
           if (TO_ADDRESS) {
              // Encode TO addresses individually, then join
