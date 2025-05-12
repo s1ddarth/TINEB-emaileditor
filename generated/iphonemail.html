@@ -109,7 +109,7 @@
 
           // --- Platform Specific Adjustments (Example for iOS if needed later) ---
           let finalQueryString = params.toString();
-          if ('${platform}' === 'ios') { // Check the platform variable passed to generateHtmlContent
+          if ('ios' === 'ios') { // Check the platform variable passed to generateHtmlContent
               // iOS Mail sometimes prefers %0A over %0D%0A or even %20 for spaces in body
               // If the standard URLSearchParams encoding causes issues on iOS,
               // you might need to manually replace encodings here.
