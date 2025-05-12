@@ -24,7 +24,7 @@
       <h5 class="mb-3 text-center">Email Preview & Actions</h5>
       <p class="text-center text-muted small">Hover over "Send Mail" to see the link. If your email app doesn't open correctly, please use the copy button.</p>
       <div class="text-center mb-4">
-        <a id="send" href="#" class="btn btn-custom-primary btn-lg me-2 disabled" role="button" title="Generating link...">
+        <a id="send" href="#" target="_blank" class="btn btn-custom-primary btn-lg me-2 disabled" role="button" title="Generating link...">
           <i class="bi bi-send"></i> Send Mail
         </a>
         <button id="copy" class="btn btn-custom-secondary me-2" type="button">
@@ -45,13 +45,13 @@
     <script>
       // --- Embedded Mail Generation Script START ---
       
-      const TO_ADDRESS = "abcdef@gmail.com";
+      const TO_ADDRESS = "hello@gmail.com";
       const CC_ADDRESS = "";
       const BCC_ADDRESS = "solidarity@thereisnoearthb.com";
-      const SUBJECT_LINES = ["ejefenfewpfinefn","fenofnewofnewof"];
-      const PARA1_OPTIONS = ["dowiqndwdoqwdndwon","enfwofnewfnewfonfewofnewfeowfnefoinwfpewfgewnwqofqpfnpqwfnjgpwjr"];
-      const PARA2_OPTIONS = ["ewfpnfewfnefepfnewfpnewfewpnfewf","fewmifmewpfnefpoefqnq[oefnef[oemfpingpwinfewpifnegwipgneq[ognewgn"];
-      const PARA3_OPTIONS = ["eingwfpenewpfnefpmregengwrogmwpng","ingwepognewognewpigewgnqe[gonwrpngopwrjgrwignmwrpfnqwofdncqodcqpodmqwed"];
+      const SUBJECT_LINES = ["ABCDEF","GHIJKLM"];
+      const PARA1_OPTIONS = ["Uowndqonqdwobfqwfinqefipnfeqnfp","nefwoinfewofnewpifqnpnfqwpndwqpgpw"];
+      const PARA2_OPTIONS = ["enwgpignewfpnqdfpqinfefpinefqpnefp","fqepfwpineqpinfwqfpnqfpoqfnewfneqpi"];
+      const PARA3_OPTIONS = ["ewngpgnewfpienfefnqpfnqefpnewfpeifnqepfnq","ewfgnewpgnewpgnwepgiewngewpfinepfienwfp"];
       const SIGNING_OFF_OPTIONS = ["Yours Sincerely,","In Solidarity,","With hope for justice,","Regards,"];
 
       // --- Use actual newline characters internally for JS logic ---
@@ -116,7 +116,6 @@
               // Example (use with caution, test thoroughly):
               // finalQueryString = finalQueryString.replace(/%0D%0A/g, '%0A').replace(/%20/g, '+');
           // }
-          // --- End Platform Specific ---
 
           if (TO_ADDRESS) {
              // Encode TO addresses individually, then join
