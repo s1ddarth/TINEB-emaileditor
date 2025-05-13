@@ -368,9 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Remove Buttons (using event delegation on a common ancestor)
-    // Using document.body is simple, but a closer container like '.container' might be slightly more performant
     document.body.addEventListener('click', (event) => {
-        // Check if the clicked element has the 'remove-button' class
         if (event.target.classList.contains('remove-button')) {
             removeInput(event.target);
         }
@@ -426,4 +424,227 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Generate button not found!");
     }
 
-});
+    // --- Load Campaign Functionality ---
+    const loadCampaignButton = document.getElementById('loadCampaignButton');
+    const campaignFileInput = document.getElementById('campaignFile');
+
+    if (loadCampaignButton && campaignFileInput) {
+        loadCampaignButton.addEventListener('click', () => {
+            const file = campaignFileInput.files[0];
+            if (file) {
+                if (file.type === "text/html") {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const htmlContent = e.target.result;
+                            parseAndPopulateEditor(htmlContent);
+                            alert("Campaign data loaded successfully from file!");
+                            campaignFileInput.value = ''; // Reset file input
+                        } catch (error) {
+                            console.error("Error processing campaign file:", error);
+                            alert(`Error processing file: ${error.message}`);
+                        }
+                    };
+                    reader.onerror = () => {
+                        console.error("Error reading file:", reader.error);
+                        alert("Error reading file. See console for details.");
+                    };
+                    reader.readAsText(file);
+                } else {
+                    alert("Please select an HTML file (.html or .htm).");
+                    campaignFileInput.value = ''; // Reset file input
+                }
+            } else {
+                alert("Please select a file to load.");
+            }
+        });
+    }
+}); // End of DOMContentLoaded
+
+// --- Helper functions for parsing and populating editor from uploaded file ---
+
+function parseAndPopulateEditor(htmlString) {
+    console.log("Starting to parse HTML content...");
+
+    const pageTitle = extractPageTitle(htmlString);
+    const pageTitleInput = document.getElementById('pageTitle');
+    if (pageTitleInput) {
+        pageTitleInput.value = pageTitle || "Save Nicobar: Email petition";
+    } else {
+        console.warn("Page title input field 'pageTitle' not found.");
+    }
+
+    const scriptContent = extractScriptContent(htmlString);
+    if (!scriptContent) {
+        alert("Could not find the embedded campaign script data in the HTML file. Form population may be incomplete.");
+        console.warn("Embedded script content not found. Cannot populate most fields.");
+        return;
+    }
+    console.log("Extracted script content snippet:", scriptContent.substring(0, 200) + "...");
+
+    const toAddressesStr = extractConstString(scriptContent, 'TO_ADDRESS');
+    const toAddresses = toAddressesStr ? toAddressesStr.split(',').map(s => s.trim()).filter(s => s) : [];
+    populateDynamicFields('toAddressesContainer', 'to-address', toAddresses, 'email', 'TO Address');
+
+    const ccAddressesStr = extractConstString(scriptContent, 'CC_ADDRESS');
+    const ccAddresses = ccAddressesStr ? ccAddressesStr.split(',').map(s => s.trim()).filter(s => s) : [];
+    populateDynamicFields('ccAddressesContainer', 'cc-address', ccAddresses, 'email', 'CC Address');
+
+    const bccAddress = extractConstString(scriptContent, 'BCC_ADDRESS');
+    const bccAddressInput = document.getElementById('bccAddress');
+    if (bccAddressInput) {
+        bccAddressInput.value = bccAddress;
+    } else {
+        console.warn("BCC address input field 'bccAddress' not found.");
+    }
+
+    const subjectLines = extractConstArray(scriptContent, 'SUBJECT_LINES');
+    populateDynamicFields('subjectLinesContainer', 'subject-line', subjectLines, 'text', 'Subject Option');
+
+    const para1Options = extractConstArray(scriptContent, 'PARA1_OPTIONS');
+    populateDynamicFields('bodyPara1Container', 'body-para-1', para1Options, 'textarea', 'Introduction Option');
+
+    const para2Options = extractConstArray(scriptContent, 'PARA2_OPTIONS');
+    populateDynamicFields('bodyPara2Container', 'body-para-2', para2Options, 'textarea', 'Conflict/Issue Option');
+
+    const para3Options = extractConstArray(scriptContent, 'PARA3_OPTIONS');
+    populateDynamicFields('bodyPara3Container', 'body-para-3', para3Options, 'textarea', 'Resolution/CTA Option');
+
+    const signingOffOptions = extractConstArray(scriptContent, 'SIGNING_OFF_OPTIONS');
+    populateDynamicFields('signingOffContainer', 'signing-off', signingOffOptions, 'text', 'Signing Off Option');
+
+    console.log("Editor population complete.");
+}
+
+function extractPageTitle(htmlString) {
+    const titleMatch = htmlString.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    if (titleMatch && titleMatch[1]) {
+        return titleMatch[1].trim();
+    }
+    console.warn("Page title not found in the uploaded HTML.");
+    return "";
+}
+
+function extractScriptContent(htmlString) {
+    const scriptStartMarker = "// --- Embedded Mail Generation Script START ---";
+    const scriptEndMarker = "// --- Embedded Mail Generation Script END ---";
+
+    const startIndex = htmlString.indexOf(scriptStartMarker);
+    if (startIndex === -1) {
+        console.warn("Campaign script start marker not found in HTML content.");
+        return null;
+    }
+
+    const endIndex = htmlString.indexOf(scriptEndMarker, startIndex + scriptStartMarker.length);
+    if (endIndex === -1) {
+        console.warn("Campaign script end marker not found in HTML content.");
+        return null;
+    }
+    return htmlString.substring(startIndex + scriptStartMarker.length, endIndex);
+}
+
+function extractConstString(scriptContent, varName) {
+    const regex = new RegExp(`const\\s+${varName}\\s*=\\s*"([^"]*)"(?:\\s*;)?`, 'm');
+    const match = scriptContent.match(regex);
+    if (match && typeof match[1] === 'string') {
+        return match[1];
+    }
+    const singleQuoteRegex = new RegExp(`const\\s+${varName}\\s*=\\s*'([^']*)'(?:\\s*;)?`, 'm');
+    const singleMatch = scriptContent.match(singleQuoteRegex);
+    if (singleMatch && typeof singleMatch[1] === 'string') {
+        return singleMatch[1];
+    }
+    console.warn(`String const ${varName} not found or malformed in script content.`);
+    return "";
+}
+
+function extractConstArray(scriptContent, varName) {
+    const regex = new RegExp(`const\\s+${varName}\\s*=\\s*(\\[(?:.|\\n|\\r)*?\\])(?:\\s*;)?`, 'm');
+    const match = scriptContent.match(regex);
+    if (match && match[1]) {
+        try {
+            // Attempt to parse as JSON. This is robust for arrays of strings.
+            // For arrays that might contain non-string literals (though not expected from your templates),
+            // a more complex parser or eval (with caution) might be needed.
+            // Given your template structure, JSON.parse should be safe and effective.
+            const arrayValue = JSON.parse(match[1]);
+            if (Array.isArray(arrayValue)) {
+                return arrayValue.map(item => String(item)); // Ensure all items are strings
+            }
+            console.warn(`Parsed value for ${varName} is not an array:`, arrayValue);
+            return [];
+        } catch (e) {
+            console.error(`Error parsing array for ${varName} from content: ${match[1]}. Error: ${e.message}`);
+            // Fallback for simple string arrays that might not be perfect JSON (e.g. trailing comma if not careful)
+            // This is a more lenient fallback, but JSON.parse is preferred.
+            try {
+                const lenientMatch = match[1].replace(/^\[|\]$/g, '').split(',')
+                                        .map(s => s.trim().replace(/^["']|["']$/g, '')); // Remove quotes and trim
+                if (lenientMatch.length > 0 && lenientMatch[0] !== "") return lenientMatch.map(String);
+            } catch (fallbackError) {
+                console.error(`Fallback parsing also failed for ${varName}: ${fallbackError.message}`);
+            }
+            return [];
+        }
+    }
+    console.warn(`Array const ${varName} not found or malformed in script content.`);
+    return [];
+}
+
+function populateDynamicFields(containerId, inputClass, values, fieldType, placeholderPrefix) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.warn(`Container with ID '${containerId}' not found. Cannot populate fields.`);
+        return;
+    }
+
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    if (values && values.length > 0) {
+        values.forEach((value, index) => {
+            const placeholder = `${placeholderPrefix} ${index + 1}`;
+            createAndAddFieldToContainer(container, fieldType, inputClass, placeholder, value);
+        });
+    } else {
+        console.log(`No values provided for ${containerId}; container is now empty.`);
+        // Optionally, add a default blank field if the list is empty after loading
+        // For example, for TO addresses or Subject lines, you might want at least one field.
+        // if (containerId === 'toAddressesContainer' || containerId === 'subjectLinesContainer') {
+        //     createAndAddFieldToContainer(container, fieldType, inputClass, `${placeholderPrefix} 1`, '');
+        // }
+    }
+}
+
+function createAndAddFieldToContainer(container, fieldType, inputClass, placeholder, value) {
+    const inputGroup = document.createElement('div');
+    inputGroup.className = 'input-group mb-2';
+
+    let field;
+    if (fieldType === 'textarea') {
+        field = document.createElement('textarea');
+        field.placeholder = placeholder;
+        field.rows = 2;
+    } else {
+        field = document.createElement('input');
+        field.type = fieldType;
+        field.placeholder = placeholder;
+    }
+    field.className = `form-control ${inputClass}`;
+    field.value = value || '';
+
+    const removeButton = document.createElement('button');
+    removeButton.className = 'btn btn-danger btn-sm remove-button';
+    removeButton.type = 'button';
+    removeButton.textContent = 'Remove';
+    // The global event listener for '.remove-button' will handle this,
+    // so no need to add an individual listener here if using event delegation.
+    // removeButton.addEventListener('click', () => {
+    //     inputGroup.remove();
+    // });
+
+    inputGroup.appendChild(field);
+    inputGroup.appendChild(removeButton);
+    container.appendChild(inputGroup);
+}
