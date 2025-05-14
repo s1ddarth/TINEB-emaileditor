@@ -137,6 +137,11 @@
             console.error("TO address constant is missing or empty.");
           }
 
+          if(mailtoLink.length>1998)
+            console.warn("mailto too long for Chrome: " + mailtoLink.length +" chars");
+          else
+            console.log("mailto length OK: "+ mailtoLink.length +" chars");
+
           // --- Construct body text for preview/copy (plain text) ---
           copyText = [
               selectedPara1,
