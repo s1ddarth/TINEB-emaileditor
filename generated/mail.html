@@ -124,11 +124,24 @@
           let detectedSystem = "Unknown"; // e.g., iOS, Android, Windows, macOS, Linux
           let mailtoEncodingProfile = "standard"; // Profile to decide encoding: 'ios_specific' or 'standard'
 
-          // iOS Detection (covers iPhone, iPad, iPod)
-          // Also handles iPads requesting desktop sites by checking touch capabilities.
-          // iPads have navigator.maxTouchPoints > 1, true Macs typically 0 or 1 (for trackpad/touchbar).
-          if ((/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) ||
-              (/Macintosh/.test(userAgent) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1)) {
+          // --- iOS Detection Logic ---
+          // 1. Check navigator.platform for direct iOS device strings (most reliable if available)
+          if (/iPad|iPhone|iPod/.test(platformNavigator)) {
+              detectedSystem = "iOS";
+              mailtoEncodingProfile = "ios_specific";
+          }
+          // 2. Check userAgent for standard iOS device strings
+          else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) { // !window.MSStream helps avoid some Windows Phone false positives
+              detectedSystem = "iOS";
+              mailtoEncodingProfile = "ios_specific";
+          }
+          // 3. Check for "Macintosh" + "Mobile" in userAgent (common for iPads in desktop mode/emulators)
+          else if (/Macintosh/.test(userAgent) && /Mobile/.test(userAgent)) {
+              detectedSystem = "iOS";
+              mailtoEncodingProfile = "ios_specific";
+          }
+          // 4. Check for "Macintosh" userAgent with multi-touch capability (another iPad desktop mode/emulator indicator)
+          else if (/Macintosh/.test(userAgent) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) {
               detectedSystem = "iOS";
               mailtoEncodingProfile = "ios_specific";
           }
@@ -163,6 +176,8 @@
           // Apply encoding adjustments based on the profile
           if (mailtoEncodingProfile === "ios_specific") {
             console.log("Applying iOS specific mailto link generation strategy.");
+            finalQueryString = finalQueryString.replace(/%0A/g, '%0D%0A');
+            console.log("iOS: Converted newlines from %0A to %0D%0A for better compatibility.");
           }
           
           else if (mailtoEncodingProfile === "standard") {
