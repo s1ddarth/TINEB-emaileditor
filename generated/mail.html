@@ -117,6 +117,59 @@
           **/
           finalQueryString = finalQueryString.replace(/\+/g, '%20');
 
+          // --- Platform Detection & Conditional Encoding ---
+          const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+          const platformNavigator = navigator.platform || ""; // For OS-level platform string
+
+          let detectedSystem = "Unknown"; // e.g., iOS, Android, Windows, macOS, Linux
+          let mailtoEncodingProfile = "standard"; // Profile to decide encoding: 'ios_specific' or 'standard'
+
+          // iOS Detection (covers iPhone, iPad, iPod)
+          // Also handles iPads requesting desktop sites by checking touch capabilities.
+          // iPads have navigator.maxTouchPoints > 1, true Macs typically 0 or 1 (for trackpad/touchbar).
+          if ((/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) ||
+              (/Macintosh/.test(userAgent) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1)) {
+              detectedSystem = "iOS";
+              mailtoEncodingProfile = "ios_specific";
+          }
+          // macOS Detection (ensure it's not an iPad already identified above)
+          else if ((/Macintosh/.test(userAgent) || /MacIntel/.test(platformNavigator) || /MacPPC/.test(platformNavigator) || /Mac68K/.test(platformNavigator))) {
+              detectedSystem = "macOS";
+              // macOS Mail.app is generally robust with standard encoding.
+              // If your testing reveals macOS needs iOS-like encoding quirks,
+              // you can change 'standard' to 'ios_specific' for this case.
+              mailtoEncodingProfile = "standard";
+          }
+          // Android Detection
+          else if (/android/i.test(userAgent)) {
+              detectedSystem = "Android";
+              mailtoEncodingProfile = "standard"; // Android is generally robust
+          }
+          // Windows Detection
+          else if (/Win/.test(platformNavigator)) {
+              detectedSystem = "Windows";
+              mailtoEncodingProfile = "standard";
+          }
+          // Linux Desktop Detection
+          else if (/Linux/.test(platformNavigator) && !/android/i.test(userAgent)) { // Exclude Android's Linux
+              detectedSystem = "Linux";
+              mailtoEncodingProfile = "standard";
+          }
+          // If still "Unknown", it might be a less common OS. 'standard' is a safe default.
+
+          console.log("Detected System:", detectedSystem);
+          console.log("Using mailto encoding profile:", mailtoEncodingProfile);
+
+          // Apply encoding adjustments based on the profile
+          if (mailtoEncodingProfile === "ios_specific") {
+            console.log("Applying iOS specific mailto link generation strategy.");
+          }
+          
+          else if (mailtoEncodingProfile === "standard") {
+            console.log(`Applying standard mailto link generation strategy for ${detectedSystem}.`);
+          }
+          // finalQueryString is now potentially adjusted based on the platform.
+
           if (TO_ADDRESS) {
              // Encode TO addresses individually, then join
              const encodedTo = TO_ADDRESS.split(",")
