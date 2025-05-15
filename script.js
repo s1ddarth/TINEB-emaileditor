@@ -469,7 +469,7 @@ function parseAndPopulateEditor(htmlString) {
     const pageTitle = extractPageTitle(htmlString);
     const pageTitleInput = document.getElementById('pageTitle');
     if (pageTitleInput) {
-        pageTitleInput.value = pageTitle || "Save Nicobar: Email petition";
+        pageTitleInput.value = pageTitle || "Email petition";
     } else {
         console.warn("Page title input field 'pageTitle' not found.");
     }
