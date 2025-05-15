@@ -80,32 +80,36 @@ document.addEventListener('DOMContentLoaded', () => {
 				return arr[Math.floor(Math.random() * arr.length)];
 			}
 
-			function escapeHtmlForDisplay(unsafe) {
-				if (typeof unsafe !== "string") return "";
-				return unsafe
-				.replace(/&/g, "&amp;")
-				.replace(/</g, "&lt;")
-				.replace(/>/g, "&gt;")
-				.replace(/"/g, "&quot;")
-				.replace(/'/g, "&#039;");
-			}
+			 function decodeHtmlEntities(text) {
+                if (typeof text !== 'string' || text === "") return text;
+                const textarea = document.createElement('textarea');
+                textarea.innerHTML = text; // Browser parses HTML entities
+                return textarea.value;
+            }
 
 			function prepareMail() {
 				const sendLink = document.getElementById("send");
 
 				try {
-					selectedSubject = getRandomElement(SUBJECT_LINES);
-					const selectedPara1 = getRandomElement(PARA1_OPTIONS);
-					const selectedPara2 = getRandomElement(PARA2_OPTIONS);
-					const selectedPara3 = getRandomElement(PARA3_OPTIONS);
-					const selectedSignoff = getRandomElement(SIGNING_OFF_OPTIONS);
+					let rawSelectedSubject = getRandomElement(SUBJECT_LINES);
+					let rawSelectedPara1 = getRandomElement(PARA1_OPTIONS);
+					let rawSelectedPara2 = getRandomElement(PARA2_OPTIONS);
+					let rawSelectedPara3 = getRandomElement(PARA3_OPTIONS);
+					let rawSelectedSignoff = getRandomElement(SIGNING_OFF_OPTIONS);
+
+                    // Decode them for use in mailto link and preview
+                    selectedSubject = decodeHtmlEntities(rawSelectedSubject);
+                    const decodedPara1 = decodeHtmlEntities(rawSelectedPara1);
+                    const decodedPara2 = decodeHtmlEntities(rawSelectedPara2);
+                    const decodedPara3 = decodeHtmlEntities(rawSelectedPara3);
+                    const decodedSignoff = decodeHtmlEntities(rawSelectedSignoff);
 
 					// --- Construct body using actual newlines ---
 					const bodyForMailto = [
-						selectedPara1,
-						selectedPara2,
-						selectedPara3,
-						selectedSignoff,
+						decodedPara1,
+						decodedPara2,
+						decodedPara3,
+						decodedSignoff,
 					].filter(p => typeof p === 'string' && p.length > 0) // Filter out potential empty strings/undefined
 					.join(DOUBLE_LINE_BREAK); // Join paragraphs with internal newlines
 
@@ -218,10 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 					// --- Construct body text for preview/copy (plain text) ---
 					copyText = [
-							selectedPara1,
-							selectedPara2,
-							selectedPara3,
-							selectedSignoff
+							decodedPara1,
+                            decodedPara2,
+                            decodedPara3,
+                            decodedSignoff,
 					].filter(p => typeof p === 'string' && p.length > 0)
 					.join('\\n\\n');
 
@@ -234,10 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
 					const subjectElem = document.getElementById("preview-subject");
 					const previewElem = document.getElementById("email-preview");
 
-					if (toElem) toElem.textContent = escapeHtmlForDisplay(TO_ADDRESS || '(Not specified)');
+					if (toElem) toElem.textContent = TO_ADDRESS || '(Not specified)'; // Use textContent directly
 					if (ccElem && ccLine) {
 						if (CC_ADDRESS) {
-							ccElem.textContent = escapeHtmlForDisplay(CC_ADDRESS);
+							ccElem.textContent = CC_ADDRESS;
 							ccLine.style.display = 'block';
 						}
 						else {
@@ -246,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					}
 					if (bccElem && bccLine) {
 						if (BCC_ADDRESS) {
-							bccElem.textContent = escapeHtmlForDisplay(BCC_ADDRESS);
+							bccElem.textContent = BCC_ADDRESS;
 							bccLine.style.display = 'block';
 						}
 						else {
@@ -254,8 +258,8 @@ document.addEventListener('DOMContentLoaded', () => {
 						}
 					}
 
-					// Display generated subject or placeholder
-					if (subjectElem) subjectElem.textContent = escapeHtmlForDisplay(selectedSubject || '(No subject generated)');
+					// Display generated and decoded subject or placeholder
+					if (subjectElem) subjectElem.textContent = selectedSubject || '(No subject generated)';
 					// Display generated body or placeholder
 					if (previewElem) previewElem.textContent = copyText || '(No body content generated)';
 
