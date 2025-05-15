@@ -50,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- HTML Generation Function ---
-
     function generateHtmlContent(data) {
         // Use JSON.stringify for safe embedding of data into the script block
         // This handles quotes, newlines, etc. within the data correctly.
@@ -69,329 +68,316 @@ document.addEventListener('DOMContentLoaded', () => {
       const DOUBLE_LINE_BREAK = "\\n\\n";
     `;
 
-		const jsLogic = `
-			let mailtoLink = "";
-			let copyText = ""; // Body only for preview/copy
-			let selectedSubject = "";
+    const jsLogic = `
+      let mailtoLink = "";
+      let copyText = ""; // Body only for preview/copy
+      let selectedSubject = "";
 
-			function getRandomElement(arr) {
-				// Ensure arr is an array and not empty before accessing length
-				if (!Array.isArray(arr) || arr.length === 0) return "";
-				return arr[Math.floor(Math.random() * arr.length)];
+      function getRandomElement(arr) {
+        // Ensure arr is an array and not empty before accessing length
+        if (!Array.isArray(arr) || arr.length === 0) return "";
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      function decodeHtmlEntities(text) {
+				if (typeof text !== 'string' || text === "") return text;
+				const textarea = document.createElement('textarea');
+				textarea.innerHTML = text; // Browser parses HTML entities
+				return textarea.value;
 			}
 
-			 function decodeHtmlEntities(text) {
-                if (typeof text !== 'string' || text === "") return text;
-                const textarea = document.createElement('textarea');
-                textarea.innerHTML = text; // Browser parses HTML entities
-                return textarea.value;
-            }
+      function prepareMail() {
+        const sendLink = document.getElementById("send");
 
-			function prepareMail() {
-				const sendLink = document.getElementById("send");
-
-				try {
-					let rawSelectedSubject = getRandomElement(SUBJECT_LINES);
+        try {
+          let rawSelectedSubject = getRandomElement(SUBJECT_LINES);
 					let rawSelectedPara1 = getRandomElement(PARA1_OPTIONS);
 					let rawSelectedPara2 = getRandomElement(PARA2_OPTIONS);
 					let rawSelectedPara3 = getRandomElement(PARA3_OPTIONS);
 					let rawSelectedSignoff = getRandomElement(SIGNING_OFF_OPTIONS);
 
-                    // Decode them for use in mailto link and preview
-                    selectedSubject = decodeHtmlEntities(rawSelectedSubject);
-                    const decodedPara1 = decodeHtmlEntities(rawSelectedPara1);
-                    const decodedPara2 = decodeHtmlEntities(rawSelectedPara2);
-                    const decodedPara3 = decodeHtmlEntities(rawSelectedPara3);
-                    const decodedSignoff = decodeHtmlEntities(rawSelectedSignoff);
+					// Decode them for use in mailto link and preview
+					selectedSubject = decodeHtmlEntities(rawSelectedSubject);
+					const decodedPara1 = decodeHtmlEntities(rawSelectedPara1);
+					const decodedPara2 = decodeHtmlEntities(rawSelectedPara2);
+					const decodedPara3 = decodeHtmlEntities(rawSelectedPara3);
+					const decodedSignoff = decodeHtmlEntities(rawSelectedSignoff);;
 
-					// --- Construct body using actual newlines ---
-					const bodyForMailto = [
+          // --- Construct body using actual newlines ---
+          const bodyForMailto = [
+            decodedPara1,
+						decodedPara2,
+						decodedPara3,
+						decodedSignoff,
+          ].filter(p => typeof p === 'string' && p.length > 0) // Filter out potential empty strings/undefined
+           .join(DOUBLE_LINE_BREAK); // Join paragraphs with internal newlines
+
+          // --- Construct mailto link (URLSearchParams will encode \\n correctly) ---
+          const params = new URLSearchParams();
+          // Only add params if they have a value
+          if (CC_ADDRESS) params.append("cc", CC_ADDRESS);
+          if (BCC_ADDRESS) params.append("bcc", BCC_ADDRESS);
+          if (selectedSubject) params.append("subject", selectedSubject);
+          if (bodyForMailto) params.append("body", bodyForMailto); // Let URLSearchParams handle encoding \n
+
+          // Platform Specific Adjustments (Example for iOS if needed later)
+          let finalQueryString = params.toString();
+          finalQueryString = finalQueryString.replace(/\\+/g, '%20');
+
+          // Platform Detection
+					const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+					const platformNavigator = navigator.platform || ""; // For OS-level platform string
+
+					let detectedSystem = "Unknown";
+					let mailtoEncodingProfile = "standard"; // Profile to decide encoding: 'ios_specific' or 'standard'
+
+					// iOS Detection Logic
+					// 1. Check navigator.platform for direct iOS device strings (most reliable if available)
+					if (/iPad|iPhone|iPod/.test(platformNavigator)) {
+						detectedSystem = "iOS";
+						mailtoEncodingProfile = "ios_specific";
+					}
+					// 2. Check userAgent for standard iOS device strings
+					else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) { // !window.MSStream helps avoid some Windows Phone false positives
+						detectedSystem = "iOS";
+						mailtoEncodingProfile = "ios_specific";
+					}
+					// 3. Check for "Macintosh" + "Mobile" in userAgent (common for iPads in desktop mode/emulators)
+					else if (/Macintosh/.test(userAgent) && /Mobile/.test(userAgent)) {
+						detectedSystem = "iOS";
+						mailtoEncodingProfile = "ios_specific";
+					}
+					// 4. Check for "Macintosh" userAgent with multi-touch capability (another iPad desktop mode/emulator indicator)
+					else if (/Macintosh/.test(userAgent) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) {
+						detectedSystem = "iOS";
+						mailtoEncodingProfile = "ios_specific";
+					}
+					// macOS Detection (ensure it's not an iPad already identified above)
+					else if ((/Macintosh/.test(userAgent) || /MacIntel/.test(platformNavigator) || /MacPPC/.test(platformNavigator) || /Mac68K/.test(platformNavigator))) {
+						detectedSystem = "macOS";
+						mailtoEncodingProfile = "standard";
+					}
+					// Android Detection
+					else if (/android/i.test(userAgent)) {
+						detectedSystem = "Android";
+						mailtoEncodingProfile = "standard"; // Android is generally robust
+					}
+					// Windows Detection
+					else if (/Win/.test(platformNavigator)) {
+						detectedSystem = "Windows";
+						mailtoEncodingProfile = "standard";
+					}
+					// Linux Desktop Detection
+					else if (/Linux/.test(platformNavigator) && !/android/i.test(userAgent)) { // Exclude Android's Linux
+						detectedSystem = "Linux";
+						mailtoEncodingProfile = "standard";
+					}
+					// If still "Unknown", it might be a less common OS. 'standard' is a safe default.
+					console.log("Detected System:", detectedSystem);
+					console.log("Using mailto encoding profile:", mailtoEncodingProfile);
+
+					// Apply encoding adjustments based on the profile
+					if (mailtoEncodingProfile === "ios_specific") {
+						console.log("Applying iOS specific mailto link generation strategy.");
+						finalQueryString = finalQueryString.replace(/%0A/g, '%0D%0A');
+						console.log("iOS: Converted newlines from %0A to %0D%0A for better compatibility.");
+					}
+					
+					else if (mailtoEncodingProfile === "standard") {
+						console.log("Applying standard mailto link generation strategy for ", detectedSystem);
+					}
+					// finalQueryString is now potentially adjusted based on the platform.
+
+					if(mailtoLink.length>1998)
+						console.warn("mailto too long for Chrome: " + mailtoLink.length +" chars");
+					else
+						console.log("mailto length OK: "+ mailtoLink.length +" chars");
+
+          if (TO_ADDRESS) {
+             // Encode TO addresses individually, then join
+             const encodedTo = TO_ADDRESS.split(",")
+              .map(e => e.trim()) // Trim whitespace first
+              .filter(e => e)     // Remove empty entries
+              .map(e => encodeURIComponent(e)) // Then encode
+              .join(",");
+
+             if (encodedTo) { // Ensure there's at least one valid TO address after filtering/encoding
+                mailtoLink = \`mailto:\${encodedTo}?\${finalQueryString}\`;
+             } else {
+                mailtoLink = ""; // No valid TO address
+                console.error("No valid TO addresses provided after encoding.");
+             }
+
+          } else {
+            mailtoLink = "";
+            console.error("TO address constant is missing or empty.");
+          }
+
+          // --- Construct body text for preview/copy (plain text) ---
+          copyText = [
 						decodedPara1,
 						decodedPara2,
 						decodedPara3,
 						decodedSignoff,
-					].filter(p => typeof p === 'string' && p.length > 0) // Filter out potential empty strings/undefined
-					.join(DOUBLE_LINE_BREAK); // Join paragraphs with internal newlines
+          ].filter(p => typeof p === 'string' && p.length > 0)
+           .join('\\n\\n');
 
-					// --- Construct mailto link (URLSearchParams will encode \\n correctly) ---
-					const params = new URLSearchParams();
-					// Only add params if they have a value
-					if (CC_ADDRESS) params.append("cc", CC_ADDRESS);
-					if (BCC_ADDRESS) params.append("bcc", BCC_ADDRESS);
-					if (selectedSubject) params.append("subject", selectedSubject);
-					if (bodyForMailto) params.append("body", bodyForMailto); // Let URLSearchParams handle encoding \n
+          // --- Update preview elements safely ---
+          const toElem = document.getElementById("preview-to");
+          const ccElem = document.getElementById("preview-cc");
+          const ccLine = document.getElementById("cc-line");
+          const bccElem = document.getElementById("preview-bcc");
+          const bccLine = document.getElementById("bcc-line");
+          const subjectElem = document.getElementById("preview-subject");
+          const previewElem = document.getElementById("email-preview");
 
-					// --- Platform Specific Adjustments (Example for iOS if needed later) ---
-					let finalQueryString = params.toString();
-					finalQueryString = finalQueryString.replace(/\\+/g, '%20');
+          if (toElem) toElem.textContent = TO_ADDRESS || '(Not specified)';
+          if (ccElem && ccLine) {
+              if (CC_ADDRESS) {
+                  ccElem.textContent = CC_ADDRESS;
+                  ccLine.style.display = 'block';
+              } else {
+                  ccLine.style.display = 'none';
+              }
+          }
+          if (bccElem && bccLine) {
+              if (BCC_ADDRESS) {
+                  bccElem.textContent = BCC_ADDRESS;
+                  bccLine.style.display = 'block';
+              } else {
+                  bccLine.style.display = 'none';
+              }
+          }
+          // Display generated and decoded subject or placeholder
+          if (subjectElem) subjectElem.textContent = selectedSubject || '(No subject generated)';
+          // Display generated body or placeholder
+          if (previewElem) previewElem.textContent = copyText || '(No body content generated)';
 
-                    // Platform Detection
-                    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-                    const platformNavigator = navigator.platform || ""; // For OS-level platform string
+          // --- Update the href of the anchor tag ---
+          if (sendLink) {
+            if (mailtoLink) {
+              sendLink.href = mailtoLink;
+              sendLink.classList.remove("disabled");
+              sendLink.title = "Click to open in your default email client";
+            } else {
+              sendLink.href = "#"; // Prevent navigation
+              sendLink.classList.add("disabled"); // Visually disable
+              sendLink.title = "Cannot generate email link (check TO address and console errors)";
+            }
+          }
+        } catch (err) {
+          console.error("Error in prepareMail:", err);
+          alert("An error occurred while preparing the email preview. Check console for details.");
+          if (sendLink) {
+            sendLink.href = "#";
+            sendLink.classList.add("disabled");
+            sendLink.title = "Error generating email link";
+          }
+        }
+      }
 
-                    let detectedSystem = "Unknown"; // e.g., iOS, Android, Windows, macOS, Linux
-                    let mailtoEncodingProfile = "standard"; // Profile to decide encoding: 'ios_specific' or 'standard'
+      // --- Event Listeners within generated file ---
+      document.addEventListener("DOMContentLoaded", () => {
+        const copyButton = document.getElementById("copy");
 
-                    // iOS Detection Logic
-                    // 1. Check navigator.platform for direct iOS device strings (most reliable if available)
-                    if (/iPad|iPhone|iPod/.test(platformNavigator)) {
-                        detectedSystem = "iOS";
-                        mailtoEncodingProfile = "ios_specific";
-                    }
-                    // 2. Check userAgent for standard iOS device strings
-                    else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) { // !window.MSStream helps avoid some Windows Phone false positives
-                        detectedSystem = "iOS";
-                        mailtoEncodingProfile = "ios_specific";
-                    }
-                    // 3. Check for "Macintosh" + "Mobile" in userAgent (common for iPads in desktop mode/emulators)
-                    else if (/Macintosh/.test(userAgent) && /Mobile/.test(userAgent)) {
-                        detectedSystem = "iOS";
-                        mailtoEncodingProfile = "ios_specific";
-                    }
-                    // 4. Check for "Macintosh" userAgent with multi-touch capability (another iPad desktop mode/emulator indicator)
-                    else if (/Macintosh/.test(userAgent) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) {
-                        detectedSystem = "iOS";
-                        mailtoEncodingProfile = "ios_specific";
-                    }
-                    // macOS Detection (ensure it's not an iPad already identified above)
-                    else if ((/Macintosh/.test(userAgent) || /MacIntel/.test(platformNavigator) || /MacPPC/.test(platformNavigator) || /Mac68K/.test(platformNavigator))) {
-                        detectedSystem = "macOS";
-                        // macOS Mail.app is generally robust with standard encoding.
-                        // If your testing reveals macOS needs iOS-like encoding quirks,
-                        // you can change 'standard' to 'ios_specific' for this case.
-                        mailtoEncodingProfile = "standard";
-                    }
-                    // Android Detection
-                    else if (/android/i.test(userAgent)) {
-                        detectedSystem = "Android";
-                        mailtoEncodingProfile = "standard"; // Android is generally robust
-                    }
-                    // Windows Detection
-                    else if (/Win/.test(platformNavigator)) {
-                        detectedSystem = "Windows";
-                        mailtoEncodingProfile = "standard";
-                    }
-                    // Linux Desktop Detection
-                    else if (/Linux/.test(platformNavigator) && !/android/i.test(userAgent)) { // Exclude Android's Linux
-                        detectedSystem = "Linux";
-                        mailtoEncodingProfile = "standard";
-                    }
-                    // If still "Unknown", it might be a less common OS. 'standard' is a safe default.
-                    console.log("Detected System:", detectedSystem);
-                    console.log("Using mailto encoding profile:", mailtoEncodingProfile);
+        if (copyButton) {
+          copyButton.addEventListener("click", () => {
+            // Ensure content exists before trying to copy
+            if (!copyText && !selectedSubject) {
+              alert("Email content not generated yet. Please reload or check generator inputs.");
+              return;
+            }
+            // Construct the full text including headers for copying
+            const fullEmailText = \`To: \${TO_ADDRESS || ''}\\n\${
+              CC_ADDRESS ? \`Cc: \${CC_ADDRESS}\\n\` : ""
+            }\${
+              BCC_ADDRESS ? \`Bcc: \${BCC_ADDRESS}\\n\` : ""
+            }Subject: \${selectedSubject || ''}\\n\\n\${copyText || ''}\`;
 
-                    // Apply encoding adjustments based on the profile
-                    if (mailtoEncodingProfile === "ios_specific") {
-                        console.log("Applying iOS specific mailto link generation strategy.");
-                        finalQueryString = finalQueryString.replace(/%0A/g, '%0D%0A');
-                        console.log("iOS: Converted newlines from %0A to %0D%0A for better compatibility.");
-                    }
-                    
-                    else if (mailtoEncodingProfile === "standard") {
-                        console.log("Applying standard mailto link generation strategy for ", detectedSystem);
-                    }
-                    // finalQueryString is now potentially adjusted based on the platform.
+            navigator.clipboard.writeText(fullEmailText)
+              .then(() => {
+                alert("Email content copied to clipboard!");
+              })
+              .catch(err => {
+                console.warn("Clipboard API failed, trying fallback:", err);
+                // Fallback using temporary textarea
+                const textarea = document.createElement("textarea");
+                textarea.value = fullEmailText;
+                textarea.style.position = "fixed"; // Prevent scrolling issues
+                textarea.style.opacity = "0"; // Hide it visually
+                textarea.style.left = "-9999px"; // Move off-screen
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                  document.execCommand("copy");
+                  alert("Email content copied (fallback)!");
+                } catch (errFallback) {
+                  console.error("Fallback copy failed:", errFallback);
+                  alert("Failed to copy automatically. Please copy manually from the preview.");
+                }
+                document.body.removeChild(textarea);
+              });
+          });
+        }
 
-					if (TO_ADDRESS) {
-						// Encode TO addresses individually, then join
-						const encodedTo = TO_ADDRESS.split(",")
-							.map(e => e.trim()) // Trim whitespace first
-							.filter(e => e)     // Remove empty entries
-							.map(e => encodeURIComponent(e)) // Then encode
-							.join(",");
+        // Initial preparation on load
+        prepareMail();
+      });
+    `;
 
-						if (encodedTo) { // Ensure there's at least one valid TO address after filtering/encoding
-							mailtoLink = \`mailto:\${encodedTo}?\${finalQueryString}\`;
-						}
-						
-						else {
-							mailtoLink = ""; // No valid TO address
-							console.error("No valid TO addresses provided after encoding.");
-						}
-					}
-				
-					else {
-						mailtoLink = "";
-						console.error("TO address constant is missing or empty.");
-					}
-
-                    if(mailtoLink.length>1998)
-                        console.warn("mailto too long for Chrome: " + mailtoLink.length +" chars");
-                    else
-                        console.log("mailto length OK: "+ mailtoLink.length +" chars");
-
-					// --- Construct body text for preview/copy (plain text) ---
-					copyText = [
-							decodedPara1,
-                            decodedPara2,
-                            decodedPara3,
-                            decodedSignoff,
-					].filter(p => typeof p === 'string' && p.length > 0)
-					.join('\\n\\n');
-
-					// --- Update preview elements safely ---
-					const toElem = document.getElementById("preview-to");
-					const ccElem = document.getElementById("preview-cc");
-					const ccLine = document.getElementById("cc-line");
-					const bccElem = document.getElementById("preview-bcc");
-					const bccLine = document.getElementById("bcc-line");
-					const subjectElem = document.getElementById("preview-subject");
-					const previewElem = document.getElementById("email-preview");
-
-					if (toElem) toElem.textContent = TO_ADDRESS || '(Not specified)'; // Use textContent directly
-					if (ccElem && ccLine) {
-						if (CC_ADDRESS) {
-							ccElem.textContent = CC_ADDRESS;
-							ccLine.style.display = 'block';
-						}
-						else {
-							ccLine.style.display = 'none';
-						}
-					}
-					if (bccElem && bccLine) {
-						if (BCC_ADDRESS) {
-							bccElem.textContent = BCC_ADDRESS;
-							bccLine.style.display = 'block';
-						}
-						else {
-							bccLine.style.display = 'none';
-						}
-					}
-
-					// Display generated and decoded subject or placeholder
-					if (subjectElem) subjectElem.textContent = selectedSubject || '(No subject generated)';
-					// Display generated body or placeholder
-					if (previewElem) previewElem.textContent = copyText || '(No body content generated)';
-
-					// --- Update the href of the anchor tag ---
-					if (sendLink) {
-						if (mailtoLink) {
-							sendLink.href = mailtoLink;
-							sendLink.classList.remove("disabled");
-							sendLink.title = "Click to open in your default email client";
-						}
-						else {
-							sendLink.href = "#"; // Prevent navigation
-							sendLink.classList.add("disabled"); // Visually disable
-							sendLink.title = "Cannot generate email link (check TO address and console errors)";
-						}
-					}
-				} 
-				
-				catch (err) {
-					console.error("Error in prepareMail:", err);
-					alert("An error occurred while preparing the email preview. Check console for details.");
-					if (sendLink) {
-						sendLink.href = "#";
-						sendLink.classList.add("disabled");
-						sendLink.title = "Error generating email link";
-					}
-				}
-			}
-
-			// --- Event Listeners within generated file ---
-			document.addEventListener("DOMContentLoaded", () => {
-			const copyButton = document.getElementById("copy");
-
-			if (copyButton) {
-				copyButton.addEventListener("click", () => {
-					// Ensure content exists before trying to copy
-					if (!copyText && !selectedSubject) {
-						alert("Email content not generated yet. Please reload or check generator inputs.");
-						return;
-					}
-					
-					// Construct the full text including headers for copying
-					const fullEmailText = \`To: \${TO_ADDRESS || ''}\\n\${
-						CC_ADDRESS ? \`Cc: \${CC_ADDRESS}\\n\` : ""
-						}\${
-						BCC_ADDRESS ? \`Bcc: \${BCC_ADDRESS}\\n\` : ""
-						}Subject: \${selectedSubject || ''}\\n\\n\${copyText || ''}\`;
-
-					navigator.clipboard.writeText(fullEmailText)
-						.then(() => {
-							alert("Email content copied to clipboard!");
-						})
-						.catch(err => {
-							console.warn("Clipboard API failed, trying fallback:", err);
-							// Fallback using temporary textarea
-							const textarea = document.createElement("textarea");
-							textarea.value = fullEmailText;
-							textarea.style.position = "fixed"; // Prevent scrolling issues
-							textarea.style.opacity = "0"; // Hide it visually
-							textarea.style.left = "-9999px"; // Move off-screen
-							document.body.appendChild(textarea);
-							textarea.select();
-							try {
-								document.execCommand("copy");
-								alert("Email content copied (fallback)!");
-							} catch (errFallback) {
-								console.error("Fallback copy failed:", errFallback);
-								alert("Failed to copy automatically. Please copy manually from the preview.");
-							}
-							document.body.removeChild(textarea);
-						});
-					});
-				}
-
-				// Initial preparation on load
-				prepareMail();
-			});`;
-
-			// Construct the full HTML using template literals
-			const fullHtml = `  <!DOCTYPE html>
-                                <html lang="en">
-                                <head>
-                                <meta charset="UTF-8" />
-                                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                                <title>${escapeHtmlForDisplay(data.pageTitle) || 'Email Petition'}</title>
-                                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
-                                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-                                <style>
-                                    body { background-color: white; color: black; padding-top: 1rem; padding-bottom: 1rem; }
-                                    .container { max-width: 800px; }
-                                    .btn-custom-primary { background-color: #2e4989; border-color: #2e4989; color: white; }
-                                    .btn-custom-primary:hover, .btn-custom-primary:focus { background-color: #1e3a75; border-color: #1e3a75; color: white; }
-                                    .btn-custom-secondary { background-color: #dfd3b9; border-color: #dfd3b9; color: black; }
-                                    .btn-custom-secondary:hover, .btn-custom-secondary:focus { background-color: #c9bfa5; border-color: #c9bfa5; color: black; }
-                                    .btn.disabled, .btn:disabled, fieldset:disabled .btn { pointer-events: none; opacity: 0.65; }
-                                    .email-preview { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1.5rem; margin-top: 1rem; border-radius: 0.375rem; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; max-height: 50vh; overflow-y: auto; }
-                                    h5, h6 { color: #2e4989; }
-                                    #email-details p { margin-bottom: 0.5rem; word-wrap: break-word; }
-                                </style>
-                            </head>
-
-                            <body>
-                                <div class="container">
-                                <h5 class="mb-3 text-center">Email Preview & Actions</h5>
-                                        <p class="text-center text-muted small">Hover over "Send Mail" to see the link. If your email app doesn't open correctly, please use the copy button.</p>
-                                        <div class="text-center mb-4">
-                                        <a id="send" href="#" target="_blank" class="btn btn-custom-primary btn-lg me-2 disabled" role="button" title="Generating link...">
-                                            <i class="bi bi-send"></i> Send Mail
-                                        </a>
-                                        <button id="copy" class="btn btn-custom-secondary me-2" type="button">
-                                            <i class="bi bi-clipboard"></i> Copy Email Content
-                                        </button>
-                            </div>
-                            <h6>Email Details:</h6>
-                            <div id="email-details" class="mb-3">
-                                        <p><strong>To:</strong> <span id="preview-to">(Generating...)</span></p>
-                                        <p id="cc-line" style="display: none;"><strong>Cc:</strong> <span id="preview-cc"></span></p>
-                                        <p id="bcc-line" style="display: none;"><strong>Bcc:</strong> <span id="preview-bcc"></span></p>
-                                        <p><strong>Subject:</strong> <span id="preview-subject">(Generating...)</span></p>
-                                    </div>
-                            <h6>Email Body Preview:</h6>
-                            <div id="email-preview" class="email-preview">(Generating...)</div>
-                                </div>
-                                    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-                                    <script>
-                                        // --- Embedded Mail Generation Script START ---
-                                        ${jsConstants}
-                                        ${jsLogic}
-                                        // --- Embedded Mail Generation Script END ---
-                                    </script>
-                            </body>
-                        </html>`;
+        // Construct the full HTML using template literals
+        const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtmlForDisplay(data.pageTitle) || 'Email Petition'}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+      body { background-color: white; color: black; padding-top: 1rem; padding-bottom: 1rem; }
+      .container { max-width: 800px; }
+      .btn-custom-primary { background-color: #2e4989; border-color: #2e4989; color: white; }
+      .btn-custom-primary:hover, .btn-custom-primary:focus { background-color: #1e3a75; border-color: #1e3a75; color: white; }
+      .btn-custom-secondary { background-color: #dfd3b9; border-color: #dfd3b9; color: black; }
+      .btn-custom-secondary:hover, .btn-custom-secondary:focus { background-color: #c9bfa5; border-color: #c9bfa5; color: black; }
+      .btn.disabled, .btn:disabled, fieldset:disabled .btn { pointer-events: none; opacity: 0.65; }
+      .email-preview { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1.5rem; margin-top: 1rem; border-radius: 0.375rem; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; max-height: 50vh; overflow-y: auto; }
+      h5, h6 { color: #2e4989; }
+      #email-details p { margin-bottom: 0.5rem; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <div class="container">
+      <h5 class="mb-3 text-center">Email Preview & Actions</h5>
+      <p class="text-center text-muted small">Hover over "Send Mail" to see the link. If your email app doesn't open correctly, please use the copy button.</p>
+      <div class="text-center mb-4">
+        <a id="send" href="#" target="_blank" class="btn btn-custom-primary btn-lg me-2 disabled" role="button" title="Generating link...">
+          <i class="bi bi-send"></i> Send Mail
+        </a>
+        <button id="copy" class="btn btn-custom-secondary me-2" type="button">
+          <i class="bi bi-clipboard"></i> Copy Email Content
+        </button>
+      </div>
+      <h6>Email Details:</h6>
+      <div id="email-details" class="mb-3">
+        <p><strong>To:</strong> <span id="preview-to">(Generating...)</span></p>
+        <p id="cc-line" style="display: none;"><strong>Cc:</strong> <span id="preview-cc"></span></p>
+        <p id="bcc-line" style="display: none;"><strong>Bcc:</strong> <span id="preview-bcc"></span></p>
+        <p><strong>Subject:</strong> <span id="preview-subject">(Generating...)</span></p>
+      </div>
+      <h6>Email Body Preview:</h6>
+      <div id="email-preview" class="email-preview">(Generating...)</div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+      // --- Embedded Mail Generation Script START ---
+      ${jsConstants}
+      ${jsLogic}
+      // --- Embedded Mail Generation Script END ---
+    </script>
+</body>
+</html>`;
         return fullHtml;
     }
 
