@@ -269,59 +269,59 @@ document.addEventListener('DOMContentLoaded', () => {
 			});`;
 
 			// Construct the full HTML using template literals
-			const fullHtml = `<!DOCTYPE html>
-												<html lang="en">
-												<head>
-													<meta charset="UTF-8" />
-													<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-													<title>${escapeHtmlForDisplay(data.pageTitle) || 'Email Petition'}</title>
-													<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
-													<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-													<style>
-														body { background-color: white; color: black; padding-top: 1rem; padding-bottom: 1rem; }
-														.container { max-width: 800px; }
-														.btn-custom-primary { background-color: #2e4989; border-color: #2e4989; color: white; }
-														.btn-custom-primary:hover, .btn-custom-primary:focus { background-color: #1e3a75; border-color: #1e3a75; color: white; }
-														.btn-custom-secondary { background-color: #dfd3b9; border-color: #dfd3b9; color: black; }
-														.btn-custom-secondary:hover, .btn-custom-secondary:focus { background-color: #c9bfa5; border-color: #c9bfa5; color: black; }
-														.btn.disabled, .btn:disabled, fieldset:disabled .btn { pointer-events: none; opacity: 0.65; }
-														.email-preview { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1.5rem; margin-top: 1rem; border-radius: 0.375rem; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; max-height: 50vh; overflow-y: auto; }
-														h5, h6 { color: #2e4989; }
-														#email-details p { margin-bottom: 0.5rem; word-wrap: break-word; }
-													</style>
-												</head>
+			const fullHtml = `  <!DOCTYPE html>
+                                <html lang="en">
+                                <head>
+                                <meta charset="UTF-8" />
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                                <title>${escapeHtmlForDisplay(data.pageTitle) || 'Email Petition'}</title>
+                                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+                                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+                                <style>
+                                    body { background-color: white; color: black; padding-top: 1rem; padding-bottom: 1rem; }
+                                    .container { max-width: 800px; }
+                                    .btn-custom-primary { background-color: #2e4989; border-color: #2e4989; color: white; }
+                                    .btn-custom-primary:hover, .btn-custom-primary:focus { background-color: #1e3a75; border-color: #1e3a75; color: white; }
+                                    .btn-custom-secondary { background-color: #dfd3b9; border-color: #dfd3b9; color: black; }
+                                    .btn-custom-secondary:hover, .btn-custom-secondary:focus { background-color: #c9bfa5; border-color: #c9bfa5; color: black; }
+                                    .btn.disabled, .btn:disabled, fieldset:disabled .btn { pointer-events: none; opacity: 0.65; }
+                                    .email-preview { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1.5rem; margin-top: 1rem; border-radius: 0.375rem; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; max-height: 50vh; overflow-y: auto; }
+                                    h5, h6 { color: #2e4989; }
+                                    #email-details p { margin-bottom: 0.5rem; word-wrap: break-word; }
+                                </style>
+                            </head>
 
-												<body>
-    												<div class="container">
-      												<h5 class="mb-3 text-center">Email Preview & Actions</h5>
-															<p class="text-center text-muted small">Hover over "Send Mail" to see the link. If your email app doesn't open correctly, please use the copy button.</p>
-															<div class="text-center mb-4">
-															<a id="send" href="#" target="_blank" class="btn btn-custom-primary btn-lg me-2 disabled" role="button" title="Generating link...">
-																<i class="bi bi-send"></i> Send Mail
-															</a>
-															<button id="copy" class="btn btn-custom-secondary me-2" type="button">
-																<i class="bi bi-clipboard"></i> Copy Email Content
-															</button>
-										      	</div>
-      											<h6>Email Details:</h6>
-      											<div id="email-details" class="mb-3">
-															<p><strong>To:</strong> <span id="preview-to">(Generating...)</span></p>
-															<p id="cc-line" style="display: none;"><strong>Cc:</strong> <span id="preview-cc"></span></p>
-															<p id="bcc-line" style="display: none;"><strong>Bcc:</strong> <span id="preview-bcc"></span></p>
-															<p><strong>Subject:</strong> <span id="preview-subject">(Generating...)</span></p>
-														</div>
-      											<h6>Email Body Preview:</h6>
-      											<div id="email-preview" class="email-preview">(Generating...)</div>
-													</div>
-														<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-														<script>
-															// --- Embedded Mail Generation Script START ---
-															${jsConstants}
-															${jsLogic}
-															// --- Embedded Mail Generation Script END ---
-														</script>
-												</body>
-											</html>`;
+                            <body>
+                                <div class="container">
+                                <h5 class="mb-3 text-center">Email Preview & Actions</h5>
+                                        <p class="text-center text-muted small">Hover over "Send Mail" to see the link. If your email app doesn't open correctly, please use the copy button.</p>
+                                        <div class="text-center mb-4">
+                                        <a id="send" href="#" target="_blank" class="btn btn-custom-primary btn-lg me-2 disabled" role="button" title="Generating link...">
+                                            <i class="bi bi-send"></i> Send Mail
+                                        </a>
+                                        <button id="copy" class="btn btn-custom-secondary me-2" type="button">
+                                            <i class="bi bi-clipboard"></i> Copy Email Content
+                                        </button>
+                            </div>
+                            <h6>Email Details:</h6>
+                            <div id="email-details" class="mb-3">
+                                        <p><strong>To:</strong> <span id="preview-to">(Generating...)</span></p>
+                                        <p id="cc-line" style="display: none;"><strong>Cc:</strong> <span id="preview-cc"></span></p>
+                                        <p id="bcc-line" style="display: none;"><strong>Bcc:</strong> <span id="preview-bcc"></span></p>
+                                        <p><strong>Subject:</strong> <span id="preview-subject">(Generating...)</span></p>
+                                    </div>
+                            <h6>Email Body Preview:</h6>
+                            <div id="email-preview" class="email-preview">(Generating...)</div>
+                                </div>
+                                    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+                                    <script>
+                                        // --- Embedded Mail Generation Script START ---
+                                        ${jsConstants}
+                                        ${jsLogic}
+                                        // --- Embedded Mail Generation Script END ---
+                                    </script>
+                            </body>
+                        </html>`;
         return fullHtml;
     }
 
