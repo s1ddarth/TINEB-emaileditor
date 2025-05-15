@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- HTML Generation Function ---
 
-    function generateHtmlContent(platform, data) {
+    function generateHtmlContent(data) {
         // Use JSON.stringify for safe embedding of data into the script block
         // This handles quotes, newlines, etc. within the data correctly.
         const jsConstants = `
@@ -119,13 +119,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
 					// --- Platform Specific Adjustments (Example for iOS if needed later) ---
 					let finalQueryString = params.toString();
-					if ('${platform}' === 'ios') { // Check the platform variable passed to generateHtmlContent
-							// iOS Mail sometimes prefers %0A over %0D%0A or even %20 for spaces in body
-							// If the standard URLSearchParams encoding causes issues on iOS,
-							// you might need to manually replace encodings here.
-							// Example (use with caution, test thoroughly):
-							finalQueryString = finalQueryString.replace(/\\+/g, '%20');
-					}
+					finalQueryString = finalQueryString.replace(/\\+/g, '%20');
+
+                    // Platform Detection
+                    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+                    const platformNavigator = navigator.platform || ""; // For OS-level platform string
+
+                    let detectedSystem = "Unknown"; // e.g., iOS, Android, Windows, macOS, Linux
+                    let mailtoEncodingProfile = "standard"; // Profile to decide encoding: 'ios_specific' or 'standard'
+
+                    // iOS Detection Logic
+                    // 1. Check navigator.platform for direct iOS device strings (most reliable if available)
+                    if (/iPad|iPhone|iPod/.test(platformNavigator)) {
+                        detectedSystem = "iOS";
+                        mailtoEncodingProfile = "ios_specific";
+                    }
+                    // 2. Check userAgent for standard iOS device strings
+                    else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) { // !window.MSStream helps avoid some Windows Phone false positives
+                        detectedSystem = "iOS";
+                        mailtoEncodingProfile = "ios_specific";
+                    }
+                    // 3. Check for "Macintosh" + "Mobile" in userAgent (common for iPads in desktop mode/emulators)
+                    else if (/Macintosh/.test(userAgent) && /Mobile/.test(userAgent)) {
+                        detectedSystem = "iOS";
+                        mailtoEncodingProfile = "ios_specific";
+                    }
+                    // 4. Check for "Macintosh" userAgent with multi-touch capability (another iPad desktop mode/emulator indicator)
+                    else if (/Macintosh/.test(userAgent) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) {
+                        detectedSystem = "iOS";
+                        mailtoEncodingProfile = "ios_specific";
+                    }
+                    // macOS Detection (ensure it's not an iPad already identified above)
+                    else if ((/Macintosh/.test(userAgent) || /MacIntel/.test(platformNavigator) || /MacPPC/.test(platformNavigator) || /Mac68K/.test(platformNavigator))) {
+                        detectedSystem = "macOS";
+                        // macOS Mail.app is generally robust with standard encoding.
+                        // If your testing reveals macOS needs iOS-like encoding quirks,
+                        // you can change 'standard' to 'ios_specific' for this case.
+                        mailtoEncodingProfile = "standard";
+                    }
+                    // Android Detection
+                    else if (/android/i.test(userAgent)) {
+                        detectedSystem = "Android";
+                        mailtoEncodingProfile = "standard"; // Android is generally robust
+                    }
+                    // Windows Detection
+                    else if (/Win/.test(platformNavigator)) {
+                        detectedSystem = "Windows";
+                        mailtoEncodingProfile = "standard";
+                    }
+                    // Linux Desktop Detection
+                    else if (/Linux/.test(platformNavigator) && !/android/i.test(userAgent)) { // Exclude Android's Linux
+                        detectedSystem = "Linux";
+                        mailtoEncodingProfile = "standard";
+                    }
+                    // If still "Unknown", it might be a less common OS. 'standard' is a safe default.
+                    console.log("Detected System:", detectedSystem);
+                    console.log("Using mailto encoding profile:", mailtoEncodingProfile);
+
+                    // Apply encoding adjustments based on the profile
+                    if (mailtoEncodingProfile === "ios_specific") {
+                        console.log("Applying iOS specific mailto link generation strategy.");
+                        finalQueryString = finalQueryString.replace(/%0A/g, '%0D%0A');
+                        console.log("iOS: Converted newlines from %0A to %0D%0A for better compatibility.");
+                    }
+                    
+                    else if (mailtoEncodingProfile === "standard") {
+                        console.log("Applying standard mailto link generation strategy for ", detectedSystem);
+                    }
+                    // finalQueryString is now potentially adjusted based on the platform.
 
 					if (TO_ADDRESS) {
 						// Encode TO addresses individually, then join
@@ -149,6 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
 						mailtoLink = "";
 						console.error("TO address constant is missing or empty.");
 					}
+
+                    if(mailtoLink.length>1998)
+                        console.warn("mailto too long for Chrome: " + mailtoLink.length +" chars");
+                    else
+                        console.log("mailto length OK: "+ mailtoLink.length +" chars");
 
 					// --- Construct body text for preview/copy (plain text) ---
 					copyText = [
@@ -417,12 +483,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // Generate HTML content for both platforms
-                const androidHtml = generateHtmlContent('android', data);
-                const iosHtml = generateHtmlContent('ios', data);
-
+                const mailHTML = generateHtmlContent(data);
                 // Trigger downloads
-                downloadFile('androidmail.html', androidHtml);
-                downloadFile('iphonemail.html', iosHtml);
+                downloadFile('mail.html', mailHTML);
 
             } catch (error) {
                 console.error("Error during HTML generation or download:", error);
